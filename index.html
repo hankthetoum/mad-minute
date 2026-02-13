@@ -246,6 +246,21 @@
   .answer-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .answer-input:focus { border-color: var(--accent); }
 
+  .submit-btn {
+    padding: 14px 24px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--green), #00c853);
+    color: #1a1a2e;
+    font-size: 1.1rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all .2s;
+    box-shadow: 0 4px 16px rgba(0,230,118,0.3);
+  }
+  .submit-btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(0,230,118,0.45); }
+  .submit-btn:active { transform: scale(0.95); }
+
   .skip-btn {
     padding: 14px 22px;
     border: 2px solid rgba(255,255,255,0.12);
@@ -438,6 +453,7 @@
     <div class="problem-text" id="problemText">3 + 4 = ?</div>
     <div class="answer-row">
       <input type="number" class="answer-input" id="answerInput" inputmode="numeric" autocomplete="off" autofocus>
+      <button class="submit-btn" id="submitBtn">GO ✓</button>
       <button class="skip-btn" id="skipBtn">Skip →</button>
     </div>
   </div>
@@ -496,6 +512,7 @@
   const problemCard = $('problemCard');
   const problemText = $('problemText');
   const answerInput = $('answerInput');
+  const submitBtn = $('submitBtn');
   const skipBtn = $('skipBtn');
   const streakBadge = $('streakBadge');
   const goBtn = $('goBtn');
@@ -805,6 +822,7 @@
   });
 
   skipBtn.addEventListener('click', skipProblem);
+  submitBtn.addEventListener('click', submitAnswer);
 
   playAgainBtn.addEventListener('click', () => {
     showScreen('start');
