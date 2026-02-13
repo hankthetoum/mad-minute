@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Mad Minute ⚡</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0c29;
+    --card: rgba(255,255,255,0.07);
+    --accent: #f7971e;
+    --accent2: #ffd200;
+    --green: #00e676;
+    --red: #ff5252;
+    --text: #fff;
+    --text-dim: rgba(255,255,255,0.6);
+    --radius: 18px;
+    --shadow: 0 8px 32px rgba(0,0,0,0.35);
+  }
+
+  html, body {
+    height: 100%; width: 100%;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    color: var(--text);
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ─── Screens ─── */
+  .screen {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 24px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .4s ease, transform .4s ease;
+    transform: scale(0.95);
+  }
+  .screen.active {
+    opacity: 1; pointer-events: auto; transform: scale(1);
+  }
+
+  /* ─── Start Screen ─── */
+  .title {
+    font-size: clamp(2.6rem, 8vw, 4.5rem);
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    margin-bottom: 8px;
+    letter-spacing: -1px;
+  }
+  .subtitle {
+    font-size: clamp(0.95rem, 2.5vw, 1.15rem);
+    color: var(--text-dim);
+    margin-bottom: 28px;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  /* Mode picker */
+  .mode-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+  .mode-group {
+    display: flex; gap: 8px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 480px;
+  }
+  .mode-btn {
+    padding: 10px 20px;
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 50px;
+    background: var(--card);
+    color: var(--text);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .25s ease;
+    backdrop-filter: blur(6px);
+    white-space: nowrap;
+  }
+  .mode-btn:hover { border-color: var(--accent); }
+  .mode-btn.selected {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #1a1a2e;
+    border-color: transparent;
+    box-shadow: 0 4px 20px rgba(247,151,30,0.4);
+  }
+
+  /* GO button */
+  .go-btn {
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #1a1a2e;
+    font-size: 2.4rem;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 6px 30px rgba(247,151,30,0.45);
+    transition: transform .2s ease, box-shadow .2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .go-btn::after {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), transparent 60%);
+  }
+  .go-btn:hover { transform: scale(1.08); box-shadow: 0 8px 40px rgba(247,151,30,0.6); }
+  .go-btn:active { transform: scale(0.96); }
+
+  /* ─── Play Screen ─── */
+  .play-hud {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 480px;
+    margin-bottom: 20px;
+  }
+  .hud-item {
+    display: flex; flex-direction: column; align-items: center;
+    background: var(--card);
+    backdrop-filter: blur(8px);
+    padding: 12px 20px;
+    border-radius: 14px;
+    min-width: 90px;
+  }
+  .hud-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .hud-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .hud-value.timer { color: var(--accent2); }
+  .hud-value.score { color: var(--green); }
+
+  /* Timer bar */
+  .timer-bar-wrap {
+    width: 100%; max-width: 480px;
+    height: 6px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 3px;
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+  .timer-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 3px;
+    transition: width .25s linear;
+    width: 100%;
+  }
+  .timer-bar.danger {
+    background: linear-gradient(90deg, var(--red), #ff8a65);
+  }
+
+  /* Problem card */
+  .problem-card {
+    background: var(--card);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--radius);
+    padding: 36px 28px 32px;
+    width: 100%;
+    max-width: 480px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    transition: border-color .3s ease;
+  }
+  .problem-card.correct {
+    border-color: var(--green);
+    box-shadow: 0 0 30px rgba(0,230,118,0.25);
+  }
+  .problem-card.wrong {
+    border-color: var(--red);
+    animation: shake .45s ease;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    15% { transform: translateX(-12px); }
+    30% { transform: translateX(10px); }
+    45% { transform: translateX(-8px); }
+    60% { transform: translateX(6px); }
+    75% { transform: translateX(-3px); }
+  }
+
+  .problem-text {
+    font-size: clamp(2.8rem, 10vw, 4.2rem);
+    font-weight: 800;
+    margin-bottom: 24px;
+    letter-spacing: 2px;
+    color: #fff;
+    min-height: 1.2em;
+  }
+
+  .answer-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .answer-input {
+    width: 160px;
+    padding: 14px 18px;
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-align: center;
+    outline: none;
+    transition: border-color .2s;
+    -moz-appearance: textfield;
+  }
+  .answer-input::-webkit-outer-spin-button,
+  .answer-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .answer-input:focus { border-color: var(--accent); }
+
+  .skip-btn {
+    padding: 14px 22px;
+    border: 2px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .skip-btn:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
+
+  /* ─── Results Screen ─── */
+  .results-card {
+    background: var(--card);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--radius);
+    padding: 40px 32px;
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    box-shadow: var(--shadow);
+  }
+  .results-emoji {
+    font-size: 3.6rem;
+    margin-bottom: 12px;
+    animation: popIn .5s ease;
+  }
+  @keyframes popIn {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .results-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin-bottom: 20px;
+  }
+  .results-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .stat-box {
+    background: rgba(255,255,255,0.05);
+    border-radius: 14px;
+    padding: 16px 10px;
+  }
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+  }
+  .stat-value.green { color: var(--green); }
+  .stat-value.gold { color: var(--accent2); }
+  .stat-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+  .results-msg {
+    font-size: 1.05rem;
+    color: var(--text-dim);
+    margin-bottom: 28px;
+    line-height: 1.6;
+  }
+
+  .play-again-btn {
+    padding: 16px 48px;
+    border: none;
+    border-radius: 50px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #1a1a2e;
+    font-size: 1.15rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(247,151,30,0.4);
+    transition: transform .2s, box-shadow .2s;
+  }
+  .play-again-btn:hover { transform: scale(1.05); box-shadow: 0 6px 28px rgba(247,151,30,0.55); }
+  .play-again-btn:active { transform: scale(0.97); }
+
+  /* ─── Confetti ─── */
+  .confetti-canvas {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* ─── Countdown overlay ─── */
+  .countdown-overlay {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,12,41,0.85);
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s;
+  }
+  .countdown-overlay.active { opacity: 1; pointer-events: auto; }
+  .countdown-num {
+    font-size: 8rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: countPop .6s ease;
+  }
+  @keyframes countPop {
+    0% { transform: scale(2); opacity: 0; }
+    50% { transform: scale(0.9); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* ─── Streak indicator ─── */
+  .streak-badge {
+    position: absolute;
+    top: -14px;
+    right: -14px;
+    background: linear-gradient(135deg, #e040fb, #7c4dff);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 800;
+    padding: 5px 12px;
+    border-radius: 20px;
+    opacity: 0;
+    transform: scale(0);
+    transition: all .3s ease;
+    white-space: nowrap;
+  }
+  .streak-badge.show {
+    opacity: 1; transform: scale(1);
+  }
+
+  /* ─── Misc ─── */
+  .problem-card { position: relative; }
+
+  /* Mobile tweaks */
+  @media (max-height: 600px) {
+    .go-btn { width: 110px; height: 110px; font-size: 2rem; }
+    .problem-text { font-size: 2.4rem; }
+    .problem-card { padding: 24px 20px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ START SCREEN ═══ -->
+<div class="screen active" id="startScreen">
+  <div class="title">Mad Minute ⚡</div>
+  <div class="subtitle">How many math problems can you solve in 60 seconds?<br>Pick a mode and hit GO!</div>
+  <div class="mode-label">Choose Operation</div>
+  <div class="mode-group">
+    <button class="mode-btn" data-mode="addition">➕ Addition</button>
+    <button class="mode-btn" data-mode="subtraction">➖ Subtraction</button>
+    <button class="mode-btn" data-mode="multiplication">✖️ Multiplication</button>
+    <button class="mode-btn" data-mode="division">➗ Division</button>
+    <button class="mode-btn selected" data-mode="random">🎲 Random</button>
+  </div>
+  <button class="go-btn" id="goBtn">GO!</button>
+</div>
+
+<!-- ═══ COUNTDOWN OVERLAY ═══ -->
+<div class="countdown-overlay" id="countdownOverlay">
+  <div class="countdown-num" id="countdownNum">3</div>
+</div>
+
+<!-- ═══ PLAY SCREEN ═══ -->
+<div class="screen" id="playScreen">
+  <div class="play-hud">
+    <div class="hud-item">
+      <span class="hud-label">Time</span>
+      <span class="hud-value timer" id="timerDisplay">60</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">Score</span>
+      <span class="hud-value score" id="scoreDisplay">0 / 0</span>
+    </div>
+  </div>
+  <div class="timer-bar-wrap">
+    <div class="timer-bar" id="timerBar"></div>
+  </div>
+  <div class="problem-card" id="problemCard">
+    <div class="streak-badge" id="streakBadge">🔥 5 streak!</div>
+    <div class="problem-text" id="problemText">3 + 4 = ?</div>
+    <div class="answer-row">
+      <input type="number" class="answer-input" id="answerInput" inputmode="numeric" autocomplete="off" autofocus>
+      <button class="skip-btn" id="skipBtn">Skip →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ RESULTS SCREEN ═══ -->
+<div class="screen" id="resultsScreen">
+  <div class="results-card">
+    <div class="results-emoji" id="resultsEmoji">🎉</div>
+    <div class="results-title" id="resultsTitle">Awesome!</div>
+    <div class="results-stats">
+      <div class="stat-box">
+        <div class="stat-value green" id="statCorrect">0</div>
+        <div class="stat-label">Correct</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value gold" id="statAccuracy">0%</div>
+        <div class="stat-label">Accuracy</div>
+      </div>
+    </div>
+    <div class="results-msg" id="resultsMsg">Great job!</div>
+    <button class="play-again-btn" id="playAgainBtn">Play Again 🔄</button>
+  </div>
+</div>
+
+<!-- ═══ CONFETTI CANVAS ═══ -->
+<canvas class="confetti-canvas" id="confettiCanvas"></canvas>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ─── State ─── */
+  let mode = 'random';
+  let timeLeft = 60;
+  let correct = 0;
+  let attempted = 0;
+  let streak = 0;
+  let bestStreak = 0;
+  let currentAnswer = 0;
+  let timerInterval = null;
+  let feedbackTimeout = null;
+
+  /* ─── DOM ─── */
+  const $ = id => document.getElementById(id);
+  const screens = {
+    start: $('startScreen'),
+    play: $('playScreen'),
+    results: $('resultsScreen')
+  };
+  const countdownOverlay = $('countdownOverlay');
+  const countdownNum = $('countdownNum');
+  const timerDisplay = $('timerDisplay');
+  const timerBar = $('timerBar');
+  const scoreDisplay = $('scoreDisplay');
+  const problemCard = $('problemCard');
+  const problemText = $('problemText');
+  const answerInput = $('answerInput');
+  const skipBtn = $('skipBtn');
+  const streakBadge = $('streakBadge');
+  const goBtn = $('goBtn');
+  const playAgainBtn = $('playAgainBtn');
+
+  /* ─── Navigation ─── */
+  function showScreen(name) {
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+  }
+
+  /* ─── Mode selector ─── */
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      mode = btn.dataset.mode;
+    });
+  });
+
+  /* ─── Problem generation ─── */
+  function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function pickOp() {
+    if (mode === 'random') {
+      const ops = ['addition', 'subtraction', 'multiplication', 'division'];
+      return ops[randInt(0, 3)];
+    }
+    return mode;
+  }
+
+  function generateProblem() {
+    const op = pickOp();
+    let a, b, answer, symbol;
+
+    switch (op) {
+      case 'addition':
+        symbol = '+';
+        a = randInt(0, 12);
+        b = randInt(0, 12);
+        answer = a + b;
+        break;
+
+      case 'subtraction':
+        symbol = '−';
+        a = randInt(0, 12);
+        b = randInt(0, 12);
+        // Ensure non-negative answer
+        if (b > a) { const tmp = a; a = b; b = tmp; }
+        answer = a - b;
+        break;
+
+      case 'multiplication':
+        symbol = '×';
+        a = randInt(0, 12);
+        b = randInt(0, 12);
+        answer = a * b;
+        break;
+
+      case 'division':
+        symbol = '÷';
+        // Generate clean division: pick divisor and quotient, compute dividend
+        b = randInt(1, 12); // divisor (avoid ÷0)
+        answer = randInt(0, 12); // quotient
+        a = b * answer; // dividend
+        break;
+    }
+
+    currentAnswer = answer;
+    problemText.textContent = `${a} ${symbol} ${b} = ?`;
+  }
+
+  /* ─── Feedback ─── */
+  function flashFeedback(isCorrect) {
+    clearTimeout(feedbackTimeout);
+    problemCard.classList.remove('correct', 'wrong');
+    void problemCard.offsetWidth;
+    problemCard.classList.add(isCorrect ? 'correct' : 'wrong');
+    feedbackTimeout = setTimeout(() => {
+      problemCard.classList.remove('correct', 'wrong');
+    }, 500);
+  }
+
+  /* ─── Streak ─── */
+  function updateStreak(isCorrect) {
+    if (isCorrect) {
+      streak++;
+      if (streak > bestStreak) bestStreak = streak;
+      if (streak >= 3) {
+        streakBadge.textContent = `🔥 ${streak} streak!`;
+        streakBadge.classList.add('show');
+      }
+    } else {
+      streak = 0;
+      streakBadge.classList.remove('show');
+    }
+  }
+
+  /* ─── Submit answer ─── */
+  function submitAnswer() {
+    const val = answerInput.value.trim();
+    if (val === '') return;
+    const num = parseInt(val, 10);
+    attempted++;
+    const isCorrect = num === currentAnswer;
+    if (isCorrect) correct++;
+    flashFeedback(isCorrect);
+    updateStreak(isCorrect);
+    scoreDisplay.textContent = `${correct} / ${attempted}`;
+    answerInput.value = '';
+    generateProblem();
+    answerInput.focus();
+  }
+
+  function skipProblem() {
+    attempted++;
+    streak = 0;
+    streakBadge.classList.remove('show');
+    scoreDisplay.textContent = `${correct} / ${attempted}`;
+    answerInput.value = '';
+    generateProblem();
+    answerInput.focus();
+  }
+
+  /* ─── Timer ─── */
+  function startTimer() {
+    timeLeft = 60;
+    timerDisplay.textContent = '60';
+    timerBar.style.width = '100%';
+    timerBar.classList.remove('danger');
+
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      timerDisplay.textContent = timeLeft;
+      const pct = (timeLeft / 60) * 100;
+      timerBar.style.width = pct + '%';
+
+      if (timeLeft <= 10) {
+        timerBar.classList.add('danger');
+      }
+
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        endGame();
+      }
+    }, 1000);
+  }
+
+  /* ─── Countdown 3-2-1 ─── */
+  function doCountdown(cb) {
+    let count = 3;
+    countdownNum.textContent = count;
+    countdownOverlay.classList.add('active');
+
+    const tick = () => {
+      count--;
+      if (count > 0) {
+        countdownNum.textContent = count;
+        countdownNum.style.animation = 'none';
+        void countdownNum.offsetWidth;
+        countdownNum.style.animation = 'countPop .6s ease';
+        setTimeout(tick, 700);
+      } else {
+        countdownNum.textContent = 'GO!';
+        countdownNum.style.animation = 'none';
+        void countdownNum.offsetWidth;
+        countdownNum.style.animation = 'countPop .6s ease';
+        setTimeout(() => {
+          countdownOverlay.classList.remove('active');
+          cb();
+        }, 500);
+      }
+    };
+    setTimeout(tick, 700);
+  }
+
+  /* ─── Start game ─── */
+  function startGame() {
+    correct = 0;
+    attempted = 0;
+    streak = 0;
+    bestStreak = 0;
+    scoreDisplay.textContent = '0 / 0';
+    streakBadge.classList.remove('show');
+    answerInput.value = '';
+    problemCard.classList.remove('correct', 'wrong');
+
+    showScreen('play');
+    doCountdown(() => {
+      generateProblem();
+      answerInput.focus();
+      startTimer();
+    });
+  }
+
+  /* ─── End game ─── */
+  function endGame() {
+    showScreen('results');
+
+    const accuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
+    $('statCorrect').textContent = `${correct} / ${attempted}`;
+    $('statAccuracy').textContent = accuracy + '%';
+
+    let emoji, title, msg;
+    if (correct >= 30) {
+      emoji = '🏆'; title = 'LEGENDARY!';
+      msg = "You're a math machine! That was absolutely incredible!";
+    } else if (correct >= 20) {
+      emoji = '🌟'; title = 'Superstar!';
+      msg = "Wow, you crushed it! You're seriously fast!";
+    } else if (correct >= 15) {
+      emoji = '🎉'; title = 'Awesome!';
+      msg = "That was really great! Keep it up and you'll be even faster!";
+    } else if (correct >= 10) {
+      emoji = '💪'; title = 'Nice work!';
+      msg = "Solid effort! You're getting better every time!";
+    } else if (correct >= 5) {
+      emoji = '👍'; title = 'Good start!';
+      msg = "You're on your way! Practice makes perfect!";
+    } else {
+      emoji = '😊'; title = 'Keep going!';
+      msg = "Every expert was once a beginner. Try again — you've got this!";
+    }
+
+    if (bestStreak >= 5) {
+      msg += ` 🔥 Best streak: ${bestStreak} in a row!`;
+    }
+
+    $('resultsEmoji').textContent = emoji;
+    $('resultsTitle').textContent = title;
+    $('resultsMsg').textContent = msg;
+
+    if (correct >= 10) {
+      launchConfetti();
+    }
+  }
+
+  /* ─── Confetti ─── */
+  function launchConfetti() {
+    const canvas = $('confettiCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const colors = ['#f7971e','#ffd200','#00e676','#e040fb','#448aff','#ff5252','#18ffff'];
+    const particles = [];
+
+    for (let i = 0; i < 150; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        w: randInt(6, 14),
+        h: randInt(4, 8),
+        color: colors[randInt(0, colors.length - 1)],
+        vx: (Math.random() - 0.5) * 4,
+        vy: Math.random() * 4 + 2,
+        rot: Math.random() * Math.PI * 2,
+        rv: (Math.random() - 0.5) * 0.15,
+        opacity: 1
+      });
+    }
+
+    let frame = 0;
+    const maxFrames = 180;
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      frame++;
+
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.06;
+        p.rot += p.rv;
+        if (frame > maxFrames - 40) {
+          p.opacity = Math.max(0, p.opacity - 0.025);
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.opacity;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      });
+
+      if (frame < maxFrames) {
+        requestAnimationFrame(draw);
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+
+  /* ─── Event listeners ─── */
+  goBtn.addEventListener('click', startGame);
+
+  answerInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitAnswer();
+    }
+  });
+
+  skipBtn.addEventListener('click', skipProblem);
+
+  playAgainBtn.addEventListener('click', () => {
+    showScreen('start');
+  });
+
+  window.addEventListener('resize', () => {
+    const canvas = $('confettiCanvas');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+
+})();
+</script>
+</body>
+</html>
